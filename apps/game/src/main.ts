@@ -1,217 +1,206 @@
 import Phaser from 'phaser';
 
-const CONFIG = {
-    laneWidth: 120,
-    colors: {
-        bg: '#F9F7F1', // Papel crema
-        road: 0xEEE5D3, 
-        line: 0xD3C4A5, 
-        text: '#333333',
-        btn: 0xFF9900
-    },
-    fontFamily: '"Comic Sans MS", "Chalkboard SE", "Marker Felt", "Coming Soon", cursive, sans-serif'
+// --- CONFIGURACIÓN GLOBAL ---
+const COLORS = {
+    bg: '#86efac',     // Pasto verde claro
+    road: 0x94a3b8,    // Carretera
+    line: 0xffffff,    // Líneas blancas
+    text: '#1e293b',   // Texto oscuro
+    panel: 0xffffff    // Paneles UI
 };
 
-// --- ESTADO GLOBAL DEL JUEGO ---
 const GameState = {
-    avatar: '🚗',
-    difficulty: 'Fácil', // Fácil (sumas basicas), Medio (Restas), Difícil (Multiplicación)
-    score: 0
+    difficulty: 'Fácil',
+    score: 0,
+    level: 1,
+    targetScore: 5 // Puntos para pasar al siguiente nivel
 };
 
-// --- PANTALLA DE INICIO (BIENVENIDA) ---
+// --- PRECARGA DE GRÁFICOS (ASSETS REALES SVG) ---
+class Preloader extends Phaser.Scene {
+    constructor() { super('Preloader'); }
+    preload() {
+        // En lugar de Emojis, usamos SVGs de alta calidad
+        this.load.svg('car', '/assets/car.svg', { width: 80, height: 120 });
+        this.load.svg('cloud', '/assets/cloud.svg', { width: 140, height: 90 });
+        this.load.svg('tree', '/assets/tree.svg', { width: 80, height: 100 });
+        
+        // UI Text
+        this.add.text(this.cameras.main.centerX, this.cameras.main.centerY, 'Cargando el Juego...', { fontSize: '32px', color: '#fff' }).setOrigin(0.5);
+    }
+    create() {
+        this.scene.start('MenuScene');
+    }
+}
+
+// --- PANTALLA PRINCIPAL (BIENVENIDA) ---
 class MenuScene extends Phaser.Scene {
     constructor() { super('MenuScene'); }
-    
     create() {
-        this.cameras.main.setBackgroundColor(CONFIG.colors.bg);
-        
-        // Título animado
-        const title = this.add.text(200, 180, 'EduRunner\nMath!', {
-            fontSize: '60px',
-            color: CONFIG.colors.text,
-            fontFamily: CONFIG.fontFamily,
-            fontStyle: 'bold',
-            align: 'center',
-            stroke: '#ffffff',
-            strokeThickness: 8
+        const width = this.cameras.main.width;
+        const height = this.cameras.main.height;
+        this.cameras.main.setBackgroundColor(COLORS.bg);
+
+        // Nubes decorativas moviéndose en el fondo
+        for(let i=0; i<5; i++) {
+            const cloud = this.add.image(Phaser.Math.Between(0, width), Phaser.Math.Between(50, height/2), 'cloud');
+            cloud.setAlpha(0.6);
+            this.tweens.add({ targets: cloud, x: width + 100, duration: Phaser.Math.Between(10000, 20000), repeat: -1 });
+        }
+
+        // Título Gigante
+        const title = this.add.text(width / 2, height * 0.3, 'Carrera\nMatemática', {
+            fontSize: `${Math.min(width * 0.1, 80)}px`,
+            color: '#ffffff',
+            stroke: '#3b82f6', strokeThickness: 10,
+            align: 'center', fontStyle: 'bold'
         }).setOrigin(0.5);
+        this.tweens.add({ targets: title, y: (height * 0.3) - 20, yoyo: true, repeat: -1, duration: 1500, ease: 'Sine.easeInOut' });
 
-        this.tweens.add({ targets: title, y: 160, yoyo: true, repeat: -1, duration: 1500, ease: 'Sine.easeInOut' });
+        // Vehículo de exhibición
+        const showcaseCar = this.add.image(width / 2, height * 0.55, 'car').setScale(1.5);
+        this.tweens.add({ targets: showcaseCar, y: (height * 0.55) - 10, yoyo: true, repeat: -1, duration: 800 });
 
-        // Decoraciones (Estética Infantil)
-        this.add.text(60, 80, '☀️', { fontSize: '60px' }).setOrigin(0.5);
-        this.add.text(350, 480, '🌳', { fontSize: '70px' }).setOrigin(0.5);
-        this.add.text(40, 520, '🦋', { fontSize: '40px' }).setOrigin(0.5);
-
-        // Botón JUGAR
-        const btn = this.add.rectangle(200, 380, 220, 70, CONFIG.colors.btn, 1).setInteractive({ useHandCursor: true });
-        btn.setStrokeStyle(5, 0x000000);
-        const btnText = this.add.text(200, 380, '¡JUGAR!', { fontSize: '36px', color: '#fff', fontFamily: CONFIG.fontFamily, fontStyle: 'bold' }).setOrigin(0.5);
+        // Botón JUGAR interactivo
+        const btn = this.add.rectangle(width / 2, height * 0.8, 280, 80, 0xef4444, 1).setInteractive({ useHandCursor: true });
+        btn.setStrokeStyle(6, 0xffffff);
+        const btnText = this.add.text(width / 2, height * 0.8, '¡JUGAR!', { fontSize: '40px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
         
-        // Animación de Latido para el botón
-        this.tweens.add({ targets: [btn, btnText], scale: 1.05, yoyo: true, repeat: -1, duration: 800 });
-
-        btn.on('pointerdown', () => this.scene.start('AvatarScene'));
+        btn.on('pointerover', () => { btn.fillColor = 0xdc2626; this.tweens.add({ targets: [btn, btnText], scale: 1.1, duration: 100 }); });
+        btn.on('pointerout', () => { btn.fillColor = 0xef4444; this.tweens.add({ targets: [btn, btnText], scale: 1, duration: 100 }); });
+        
+        btn.on('pointerdown', () => this.scene.start('DifficultyScene'));
     }
 }
 
-// --- PANTALLA DE SELECCIÓN DE PERSONAJE ---
-class AvatarScene extends Phaser.Scene {
-    constructor() { super('AvatarScene'); }
-    
-    create() {
-        this.cameras.main.setBackgroundColor(CONFIG.colors.bg);
-        this.add.text(200, 80, 'Elige tu\nPersonaje', { fontSize: '40px', color: CONFIG.colors.text, fontFamily: CONFIG.fontFamily, fontStyle: 'bold', align: 'center' }).setOrigin(0.5);
-
-        // Personajes disponibles (Emojis estilo dibujo)
-        const avatars = ['🚗', '🐷', '🐢', '👧', '👦', '🚀'];
-        
-        avatars.forEach((avatar, index) => {
-            const x = 120 + (index % 2) * 160;
-            const y = 220 + Math.floor(index / 2) * 120;
-            
-            const box = this.add.rectangle(x, y, 90, 90, 0xffffff).setInteractive({ useHandCursor: true });
-            box.setStrokeStyle(5, 0x000000);
-            this.add.text(x, y, avatar, { fontSize: '60px' }).setOrigin(0.5);
-            
-            box.on('pointerdown', () => {
-                GameState.avatar = avatar;
-                // Efecto al elegir
-                this.tweens.add({
-                    targets: box, scale: 1.2, duration: 150, yoyo: true, onComplete: () => {
-                        this.scene.start('DifficultyScene');
-                    }
-                });
-            });
-            box.on('pointerover', () => box.fillColor = 0xfff0b3); // Resaltar amarillo
-            box.on('pointerout', () => box.fillColor = 0xffffff);
-        });
-    }
-}
-
-// --- PANTALLA DE SELECCIÓN DE DIFICULTAD ---
+// --- PANTALLA DE DIFICULTAD ---
 class DifficultyScene extends Phaser.Scene {
     constructor() { super('DifficultyScene'); }
-    
     create() {
-        this.cameras.main.setBackgroundColor(CONFIG.colors.bg);
-        this.add.text(200, 100, 'Nivel', { fontSize: '48px', color: CONFIG.colors.text, fontFamily: CONFIG.fontFamily, fontStyle: 'bold' }).setOrigin(0.5);
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+        this.cameras.main.setBackgroundColor(COLORS.bg);
+
+        this.add.text(w / 2, h * 0.15, 'Selecciona un Nivel', { fontSize: '48px', color: '#fff', stroke: '#000', strokeThickness: 6, fontStyle: 'bold' }).setOrigin(0.5);
 
         const diffs = [
-            { id: 'Fácil', color: 0x32CD32, desc: '(Sumas)' },
-            { id: 'Medio', color: 0xFFA500, desc: '(Restas)' },
-            { id: 'Difícil', color: 0xFF4500, desc: '(Multiplicar)' }
+            { id: 'Fácil', color: 0x22c55e, desc: 'Sumas de 1 cifra' },
+            { id: 'Medio', color: 0xeab308, desc: 'Sumas y Restas' },
+            { id: 'Difícil', color: 0xef4444, desc: 'Multiplicaciones' }
         ];
 
         diffs.forEach((diff, index) => {
-            const y = 240 + (index * 110);
-            const btn = this.add.rectangle(200, y, 240, 80, diff.color).setInteractive({ useHandCursor: true });
-            btn.setStrokeStyle(5, 0x000000);
+            const y = (h * 0.35) + (index * (h * 0.2));
+            const btn = this.add.rectangle(w / 2, y, Math.min(w * 0.8, 400), Math.min(h * 0.15, 100), diff.color).setInteractive({ useHandCursor: true });
+            btn.setStrokeStyle(4, 0xffffff);
             
-            this.add.text(200, y - 10, diff.id, { fontSize: '32px', color: '#fff', fontFamily: CONFIG.fontFamily, fontStyle: 'bold' }).setOrigin(0.5);
-            this.add.text(200, y + 20, diff.desc, { fontSize: '18px', color: '#fff', fontFamily: CONFIG.fontFamily }).setOrigin(0.5);
+            this.add.text(w / 2, y - 15, diff.id, { fontSize: '36px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+            this.add.text(w / 2, y + 20, diff.desc, { fontSize: '20px', color: '#fff' }).setOrigin(0.5);
             
             btn.on('pointerdown', () => {
                 GameState.difficulty = diff.id;
-                this.tweens.add({
-                    targets: btn, scale: 1.1, duration: 150, yoyo: true, onComplete: () => {
-                        this.scene.start('GameScene');
-                    }
-                });
+                GameState.score = 0;
+                GameState.level = 1;
+                this.scene.start('GameScene');
             });
         });
     }
 }
 
-// --- PANTALLA PRINCIPAL DEL JUEGO ---
+// --- PANTALLA PRINCIPAL DEL JUEGO (RESPONSIVE) ---
 class GameScene extends Phaser.Scene {
-    player!: Phaser.GameObjects.Text;
-    currentLane: number = 1;
+    player!: Phaser.Physics.Arcade.Sprite;
+    currentLane: number = 1; // 0: Izquierda, 1: Centro, 2: Derecha
     questionText!: Phaser.GameObjects.Text;
-    scoreText!: Phaser.GameObjects.Text;
-    statusText!: Phaser.GameObjects.Text;
+    levelText!: Phaser.GameObjects.Text;
+    progressBar!: Phaser.GameObjects.Rectangle;
     obstaclesGroup!: Phaser.Physics.Arcade.Group;
     sceneryGroup!: Phaser.Physics.Arcade.Group;
     correctAnswer: number = 0;
-    
+    laneWidth!: number;
+    roadX!: number;
+    speed: number = 300;
+
     constructor() { super('GameScene'); }
 
     create() {
-        // Cargar puntos guardados offline
-        const savedScore = localStorage.getItem('eduRunner_score');
-        if (savedScore) GameState.score = parseInt(savedScore, 10);
-
-        this.cameras.main.setBackgroundColor(CONFIG.colors.bg);
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+        this.cameras.main.setBackgroundColor(COLORS.bg);
         
-        // El Camino
-        this.add.rectangle(200, 300, 360, 600, CONFIG.colors.road);
-        for (let i = 0; i < 12; i++) {
-            this.add.rectangle(140, i * 60, 4, 30, CONFIG.colors.line);
-            this.add.rectangle(260, i * 60, 4, 30, CONFIG.colors.line);
+        // --- CÁLCULOS RESPONSIVE PARA LA CARRETERA ---
+        // La carretera ocupa el 60% de la pantalla en PC, o el 90% en móviles
+        const roadWidth = w > 800 ? w * 0.5 : w * 0.9; 
+        this.laneWidth = roadWidth / 3;
+        this.roadX = (w - roadWidth) / 2;
+
+        // Dibujar el asfalto
+        this.add.rectangle(w / 2, h / 2, roadWidth, h, COLORS.road);
+
+        // Líneas divisorias dinámicas
+        for (let i = 0; i < 20; i++) {
+            this.add.rectangle(this.roadX + this.laneWidth, i * (h / 10), 6, h/20, COLORS.line);
+            this.add.rectangle(this.roadX + (this.laneWidth * 2), i * (h / 10), 6, h/20, COLORS.line);
         }
 
         this.sceneryGroup = this.physics.add.group();
 
-        // El Jugador (Avatar seleccionado)
-        this.player = this.add.text(200, 500, GameState.avatar, { fontSize: '64px' }).setOrigin(0.5);
-        this.physics.add.existing(this.player);
-        (this.player.body as Phaser.Physics.Arcade.Body).setSize(40, 40);
+        // --- EL VEHÍCULO (ASSET REAL Y ANIMADO) ---
+        const startX = this.roadX + (this.laneWidth * 1.5);
+        this.player = this.physics.add.sprite(startX, h * 0.8, 'car');
+        // Escalar el carro basado en el ancho del carril
+        this.player.setDisplaySize(this.laneWidth * 0.6, (this.laneWidth * 0.6) * 1.5);
+        this.player.body?.setSize(80, 120);
 
-        // UI Superior
-        this.questionText = this.add.text(200, 80, '¿?', { 
-            fontSize: '60px', 
-            color: CONFIG.colors.text, 
-            fontFamily: CONFIG.fontFamily,
-            fontStyle: 'bold',
-            stroke: '#ffffff',
-            strokeThickness: 6
+        // --- UI E INDICADORES DE NIVEL ---
+        // Panel superior blanco
+        this.add.rectangle(w / 2, 60, Math.min(w * 0.9, 600), 100, 0xffffff).setStrokeStyle(4, 0x000);
+        
+        this.levelText = this.add.text(w / 2, 25, `Nivel ${GameState.level} - ¡Consigue ${GameState.targetScore} aciertos!`, { 
+            fontSize: '20px', color: '#64748b', fontStyle: 'bold' 
+        }).setOrigin(0.5);
+
+        this.questionText = this.add.text(w / 2, 70, '¿?', { 
+            fontSize: '56px', color: '#0f172a', fontStyle: 'bold' 
         }).setOrigin(0.5);
         
-        this.scoreText = this.add.text(60, 30, '⭐ ' + GameState.score, { 
-            fontSize: '28px', color: '#FF9900', fontFamily: CONFIG.fontFamily, fontStyle: 'bold' 
-        }).setOrigin(0.5);
+        // Barra de progreso
+        this.add.rectangle(w / 2, 130, 300, 15, 0xe2e8f0).setStrokeStyle(2, 0x000);
+        this.progressBar = this.add.rectangle((w / 2) - 150, 130, 0, 15, 0x22c55e).setOrigin(0, 0.5);
 
-        // Indicador Offline
-        this.statusText = this.add.text(330, 20, navigator.onLine ? '🟢 Sinc' : '🔴 Off', { 
-            fontSize: '16px', color: '#333333', fontFamily: CONFIG.fontFamily
-        }).setOrigin(0.5);
+        // --- CONTROLES Y EVENTOS ---
+        this.input.keyboard?.on('keydown-LEFT', () => this.movePlayer(-1));
+        this.input.keyboard?.on('keydown-RIGHT', () => this.movePlayer(1));
+        this.input.keyboard?.on('keydown-A', () => this.movePlayer(-1));
+        this.input.keyboard?.on('keydown-D', () => this.movePlayer(1));
 
-        window.addEventListener('online', () => { this.statusText.setText('🟢 Sinc'); this.syncData(); });
-        window.addEventListener('offline', () => { this.statusText.setText('🔴 Off'); });
-
-        // Controles (Teclado y Táctil)
-        if (this.input.keyboard) {
-            this.input.keyboard.on('keydown-LEFT', () => this.movePlayer(-1));
-            this.input.keyboard.on('keydown-RIGHT', () => this.movePlayer(1));
-            this.input.keyboard.on('keydown-A', () => this.movePlayer(-1));
-            this.input.keyboard.on('keydown-D', () => this.movePlayer(1));
-        }
+        // Control táctil (Click/Touch) dividido en mitades
         this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-            if (pointer.x < 200) this.movePlayer(-1);
+            if (pointer.x < w / 2) this.movePlayer(-1);
             else this.movePlayer(1);
         });
-
-        // Botón de Volver al Menú
-        const backBtn = this.add.text(20, 550, '🔙', { fontSize: '32px' }).setInteractive();
-        backBtn.on('pointerdown', () => this.scene.start('MenuScene'));
 
         this.obstaclesGroup = this.physics.add.group();
         this.generateQuestion();
 
         this.physics.add.overlap(this.player, this.obstaclesGroup, this.handleCollision as any, undefined, this);
-        this.time.addEvent({ delay: 1200, callback: this.spawnScenery, callbackScope: this, loop: true });
+        
+        // Decoración de los bordes
+        this.time.addEvent({ delay: 800, callback: this.spawnScenery, callbackScope: this, loop: true });
+
+        // Sincronización offline check
+        if (navigator.onLine) this.syncData();
     }
 
     spawnScenery() {
-        const side = Phaser.Math.Between(0, 1) === 0 ? 20 : 380;
-        const items = ['🌳', '🌸', '🦋', '🌻', '🏡'];
-        const emoji = Phaser.Utils.Array.GetRandom(items);
+        const w = this.cameras.main.width;
+        // Aparece fuera del área de la carretera
+        const isLeft = Phaser.Math.Between(0, 1) === 0;
+        const x = isLeft ? Phaser.Math.Between(0, this.roadX - 40) : Phaser.Math.Between(this.roadX + (this.laneWidth * 3) + 40, w);
         
-        const item = this.add.text(side, -50, emoji, { fontSize: '40px' }).setOrigin(0.5);
-        this.physics.add.existing(item);
-        (item.body as Phaser.Physics.Arcade.Body).setVelocityY(100 + (GameState.score * 5));
-        this.sceneryGroup.add(item);
+        const tree = this.physics.add.sprite(x, -100, 'tree');
+        tree.setVelocityY(this.speed);
+        this.sceneryGroup.add(tree);
     }
 
     movePlayer(dir: number) {
@@ -219,26 +208,40 @@ class GameScene extends Phaser.Scene {
         if (this.currentLane < 0) this.currentLane = 0;
         if (this.currentLane > 2) this.currentLane = 2;
         
-        const targetX = 80 + (this.currentLane * 120);
-        this.tweens.add({ targets: this.player, x: targetX, duration: 200, ease: 'Back.easeOut' });
+        const targetX = this.roadX + (this.laneWidth * 0.5) + (this.currentLane * this.laneWidth);
+        
+        // Animación dinámica de giro del vehículo (Inclinación deportiva)
+        this.tweens.add({
+            targets: this.player,
+            x: targetX,
+            angle: dir * 15, // Inclinar el carro al girar
+            duration: 150,
+            ease: 'Power2',
+            onComplete: () => {
+                this.tweens.add({ targets: this.player, angle: 0, duration: 100 }); // Enderezar
+            }
+        });
     }
 
     generateQuestion() {
         let num1, num2;
-        
         if (GameState.difficulty === 'Fácil') {
             num1 = Phaser.Math.Between(1, 10);
             num2 = Phaser.Math.Between(1, 10);
             this.correctAnswer = num1 + num2;
             this.questionText.setText(`${num1} + ${num2}`);
         } else if (GameState.difficulty === 'Medio') {
-            num1 = Phaser.Math.Between(5, 20);
-            num2 = Phaser.Math.Between(1, num1); // Resta simple
-            this.correctAnswer = num1 - num2;
-            this.questionText.setText(`${num1} - ${num2}`);
+            const isSum = Phaser.Math.Between(0, 1) === 0;
+            if(isSum){
+                num1 = Phaser.Math.Between(10, 50); num2 = Phaser.Math.Between(1, 20);
+                this.correctAnswer = num1 + num2; this.questionText.setText(`${num1} + ${num2}`);
+            } else {
+                num1 = Phaser.Math.Between(10, 30); num2 = Phaser.Math.Between(1, num1);
+                this.correctAnswer = num1 - num2; this.questionText.setText(`${num1} - ${num2}`);
+            }
         } else {
-            num1 = Phaser.Math.Between(1, 10);
-            num2 = Phaser.Math.Between(1, 5); // Multiplicación simple
+            num1 = Phaser.Math.Between(2, 10);
+            num2 = Phaser.Math.Between(2, 10);
             this.correctAnswer = num1 * num2;
             this.questionText.setText(`${num1} × ${num2}`);
         }
@@ -246,25 +249,25 @@ class GameScene extends Phaser.Scene {
         let fake1 = this.correctAnswer + Phaser.Math.Between(1, 5);
         let fake2 = this.correctAnswer - Phaser.Math.Between(1, 4);
         if (fake2 < 0) fake2 = this.correctAnswer + 3;
+        if (fake1 === fake2) fake1++;
         
         const answers = [this.correctAnswer, fake1, fake2];
         Phaser.Utils.Array.Shuffle(answers);
 
-        // Animación de la pregunta
         this.tweens.add({ targets: this.questionText, scale: 1.3, yoyo: true, duration: 300 });
 
         for (let i = 0; i < 3; i++) {
-            const laneX = 80 + (i * 120);
+            const laneX = this.roadX + (this.laneWidth * 0.5) + (i * this.laneWidth);
             
-            const cloud = this.add.text(laneX, -50, '☁️', { fontSize: '100px' }).setOrigin(0.5);
-            const text = this.add.text(laneX, -50, answers[i].toString(), { 
-                fontSize: '36px', color: '#222222', fontFamily: CONFIG.fontFamily, fontStyle: 'bold' 
+            const cloud = this.physics.add.sprite(laneX, -100, 'cloud');
+            cloud.setDisplaySize(this.laneWidth * 0.8, (this.laneWidth * 0.8) * 0.6);
+            
+            const text = this.add.text(laneX, -100, answers[i].toString(), { 
+                fontSize: '40px', color: '#0f172a', fontStyle: 'bold' 
             }).setOrigin(0.5);
             
-            this.physics.add.existing(cloud);
-            const speed = 150 + (GameState.score * 12);
-            (cloud.body as Phaser.Physics.Arcade.Body).setVelocityY(speed);
-            (cloud.body as Phaser.Physics.Arcade.Body).setSize(70, 50);
+            cloud.setVelocityY(this.speed);
+            cloud.body?.setSize(100, 60);
             
             (cloud as any).answer = answers[i];
             (cloud as any).textObj = text;
@@ -275,11 +278,12 @@ class GameScene extends Phaser.Scene {
 
     update() {
         let obstaclesGone = false;
+        const h = this.cameras.main.height;
 
         this.obstaclesGroup.getChildren().forEach((child) => {
             const cloud = child as any;
             cloud.textObj.y = cloud.y;
-            if (cloud.y > 650) {
+            if (cloud.y > h + 100) {
                 cloud.textObj.destroy();
                 cloud.destroy();
                 obstaclesGone = true;
@@ -288,9 +292,10 @@ class GameScene extends Phaser.Scene {
 
         this.sceneryGroup.getChildren().forEach((child) => {
             const item = child as any;
-            if (item.y > 650) item.destroy();
+            if (item.y > h + 100) item.destroy();
         });
 
+        // Si las nubes pasaron y no chocó con ninguna, es un error (se saltó la pregunta)
         if (obstaclesGone && this.obstaclesGroup.getLength() === 0) {
             this.handleError();
         }
@@ -299,28 +304,56 @@ class GameScene extends Phaser.Scene {
     handleCollision(player: any, cloud: any) {
         if (cloud.answer === this.correctAnswer) {
             GameState.score++;
-            this.scoreText.setText('⭐ ' + GameState.score);
-            localStorage.setItem('eduRunner_score', GameState.score.toString());
             
-            const star = this.add.text(player.x, player.y - 50, '✨', { fontSize: '40px' }).setOrigin(0.5);
-            this.tweens.add({ targets: star, y: player.y - 100, alpha: 0, duration: 800, onComplete: () => star.destroy() });
-            this.tweens.add({ targets: player, angle: 360, duration: 400 });
+            // Actualizar barra de progreso
+            const progress = (GameState.score / GameState.targetScore) * 300;
+            this.tweens.add({ targets: this.progressBar, width: progress, duration: 300 });
+
+            // Animación de salto de victoria
+            this.tweens.add({ targets: player, y: player.y - 40, duration: 150, yoyo: true });
+            
+            if (GameState.score >= GameState.targetScore) {
+                this.levelUp();
+            } else {
+                this.clearObstacles();
+                this.time.delayedCall(400, () => this.generateQuestion());
+            }
         } else {
             this.handleError();
         }
-
-        this.clearObstacles();
-        this.time.delayedCall(300, () => this.generateQuestion());
     }
 
     handleError() {
-        GameState.score = Math.max(0, GameState.score - 1);
-        this.scoreText.setText('⭐ ' + GameState.score);
-        localStorage.setItem('eduRunner_score', GameState.score.toString());
-        this.cameras.main.shake(300, 0.02);
+        this.cameras.main.shake(400, 0.03); // Fuerte sacudida
         
-        const sad = this.add.text(this.player.x, this.player.y - 40, '💦', { fontSize: '40px' }).setOrigin(0.5);
-        this.tweens.add({ targets: sad, y: this.player.y + 30, alpha: 0, duration: 800, onComplete: () => sad.destroy() });
+        // Fogonazo rojo
+        const flash = this.add.rectangle(this.cameras.main.width/2, this.cameras.main.height/2, this.cameras.main.width, this.cameras.main.height, 0xef4444);
+        flash.setAlpha(0.5);
+        this.tweens.add({ targets: flash, alpha: 0, duration: 300, onComplete: () => flash.destroy() });
+
+        this.clearObstacles();
+        this.time.delayedCall(500, () => this.generateQuestion());
+    }
+
+    levelUp() {
+        this.clearObstacles();
+        GameState.level++;
+        GameState.targetScore += 5; // Más difícil
+        this.speed += 50; // Más rápido
+
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+        
+        const overlay = this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.7);
+        const winText = this.add.text(w/2, h/2 - 50, '¡NIVEL SUPERADO!', { fontSize: '60px', color: '#fbbf24', fontStyle: 'bold', stroke: '#000', strokeThickness: 8 }).setOrigin(0.5);
+        const nextBtn = this.add.rectangle(w/2, h/2 + 50, 300, 80, 0x3b82f6).setInteractive({ useHandCursor: true }).setStrokeStyle(4, 0xffffff);
+        const nextText = this.add.text(w/2, h/2 + 50, 'Siguiente Nivel 🚀', { fontSize: '30px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+
+        this.tweens.add({ targets: winText, scale: 1.2, yoyo: true, repeat: -1, duration: 800 });
+
+        nextBtn.on('pointerdown', () => {
+            this.scene.restart();
+        });
     }
 
     clearObstacles() {
@@ -332,19 +365,22 @@ class GameScene extends Phaser.Scene {
     }
 
     syncData() {
-        console.log('Sincronizando...');
+        // Mock de sincronización
+        console.log('Sincronizando puntos:', GameState.score);
     }
 }
 
+// Configuración Responsiva Avanzada
 const config: Phaser.Types.Core.GameConfig = {
     type: Phaser.AUTO,
-    width: 400,
-    height: 600,
+    scale: {
+        mode: Phaser.Scale.RESIZE, // 100% responsivo para cualquier pantalla (Celular, Tablet, PC)
+        parent: 'app',
+        width: '100%',
+        height: '100%'
+    },
     physics: { default: 'arcade', arcade: { debug: false } },
-    scene: [MenuScene, AvatarScene, DifficultyScene, GameScene], // Todas las escenas cargadas aquí
-    parent: 'app',
-    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
-    backgroundColor: '#F9F7F1'
+    scene: [Preloader, MenuScene, DifficultyScene, GameScene]
 };
 
 new Phaser.Game(config);
