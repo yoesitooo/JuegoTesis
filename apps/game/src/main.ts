@@ -13,10 +13,11 @@ const CONFIG = {
 };
 
 class GameScene extends Phaser.Scene {
-    player!: Phaser.GameObjects.Text; // Usaremos un Emoji de carrito 
+    player!: Phaser.GameObjects.Text;
     currentLane: number = 1;
     questionText!: Phaser.GameObjects.Text;
     scoreText!: Phaser.GameObjects.Text;
+    statusText!: Phaser.GameObjects.Text; // Texto de Online/Offline
     score: number = 0;
     obstaclesGroup!: Phaser.Physics.Arcade.Group;
     sceneryGroup!: Phaser.Physics.Arcade.Group;
@@ -27,6 +28,11 @@ class GameScene extends Phaser.Scene {
     }
 
     create() {
+        // Cargar puntos guardados offline
+        const savedScore = localStorage.getItem('eduRunner_score');
+        if (savedScore) {
+            this.score = parseInt(savedScore, 10);
+        }
         // Fondo Color Papel (Estilo Doodle/Dibujo)
         this.cameras.main.setBackgroundColor(CONFIG.colors.bg);
         
@@ -65,6 +71,21 @@ class GameScene extends Phaser.Scene {
             fontFamily: CONFIG.fontFamily,
             fontStyle: 'bold' 
         }).setOrigin(0.5);
+
+        // Indicador de Conexión (Detecta si hay internet o no)
+        this.statusText = this.add.text(320, 20, navigator.onLine ? '🟢 Sincronizado' : '🔴 Offline (Guardando local)', { 
+            fontSize: '14px', 
+            color: '#333333',
+            fontFamily: CONFIG.fontFamily
+        }).setOrigin(0.5);
+
+        window.addEventListener('online', () => {
+            this.statusText.setText('🟢 Sincronizado');
+            this.syncData();
+        });
+        window.addEventListener('offline', () => {
+            this.statusText.setText('🔴 Offline (Guardando local)');
+        });
 
         // Controles
         if (this.input.keyboard) {
@@ -194,6 +215,7 @@ class GameScene extends Phaser.Scene {
         if (cloud.answer === this.correctAnswer) {
             this.score++;
             this.scoreText.setText('⭐ ' + this.score);
+            localStorage.setItem('eduRunner_score', this.score.toString()); // Guardar Offline
             
             // Efecto de celebración (Chispitas ✨)
             const star = this.add.text(player.x, player.y - 50, '✨', { fontSize: '40px' }).setOrigin(0.5);
@@ -216,6 +238,7 @@ class GameScene extends Phaser.Scene {
     handleError() {
         this.score = Math.max(0, this.score - 1);
         this.scoreText.setText('⭐ ' + this.score);
+        localStorage.setItem('eduRunner_score', this.score.toString()); // Guardar Offline
         this.cameras.main.shake(300, 0.02);
         
         // Efecto de llanto/sudor 💦
@@ -235,6 +258,12 @@ class GameScene extends Phaser.Scene {
             if(cloud.textObj) cloud.textObj.destroy();
         });
         this.obstaclesGroup.clear(true, true);
+    }
+
+    // Simulación de envío de datos cuando regresa el internet
+    syncData() {
+        // Aquí iría el código real de Supabase (ej. await supabase.from('scores').insert(...))
+        alert('🌐 ¡Internet restaurado! Sincronizando ' + this.score + ' estrellas con el servidor del profesor...');
     }
 }
 
