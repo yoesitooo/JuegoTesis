@@ -344,10 +344,10 @@ class GameScene extends Phaser.Scene {
         const w = this.cameras.main.width;
         const h = this.cameras.main.height;
         
-        const overlay = this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.7);
+        this.add.rectangle(w/2, h/2, w, h, 0x000000, 0.7);
         const winText = this.add.text(w/2, h/2 - 50, '¡NIVEL SUPERADO!', { fontSize: '60px', color: '#fbbf24', fontStyle: 'bold', stroke: '#000', strokeThickness: 8 }).setOrigin(0.5);
         const nextBtn = this.add.rectangle(w/2, h/2 + 50, 300, 80, 0x3b82f6).setInteractive({ useHandCursor: true }).setStrokeStyle(4, 0xffffff);
-        const nextText = this.add.text(w/2, h/2 + 50, 'Siguiente Nivel 🚀', { fontSize: '30px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+        this.add.text(w/2, h/2 + 50, 'Siguiente Nivel 🚀', { fontSize: '30px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
 
         this.tweens.add({ targets: winText, scale: 1.2, yoyo: true, repeat: -1, duration: 800 });
 
