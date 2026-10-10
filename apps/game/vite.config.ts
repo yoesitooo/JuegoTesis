@@ -6,24 +6,29 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: 'auto',
+      includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       workbox: {
-        // Obliga a cachear todos los archivos estáticos (código, estilos, imágenes) para uso sin internet
-        globPatterns: ['**/*.{js,css,html,ico,png,svg}'] 
+        // Cachea todo (código, estilos, fuentes, imágenes) para jugar sin internet
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
       },
       manifest: {
-        name: 'EduRunner Math',
-        short_name: 'EduRunner',
-        description: 'Juego gamificado de matemáticas offline',
-        theme_color: '#F9F7F1',
-        display: 'fullscreen', // Hace que en tablets se vea como App nativa (sin barra de navegador)
+        name: 'Carrera Matemática',
+        short_name: 'Carrera',
+        description: 'Crea tu personaje, elige tu vehículo y resuelve operaciones matemáticas.',
+        lang: 'es',
+        theme_color: '#CFE8FF',
+        background_color: '#EEF6FF',
+        display: 'fullscreen',
+        orientation: 'any',
         icons: [
-          {
-            src: 'favicon.svg',
-            sizes: '192x192',
-            type: 'image/svg+xml'
-          }
-        ]
-      }
-    })
-  ]
+          { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
+          { src: 'icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+        ],
+      },
+    }),
+  ],
+  test: {
+    environment: 'node',
+  },
 });

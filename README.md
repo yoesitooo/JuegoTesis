@@ -1,48 +1,40 @@
 <div align="center">
-  <h1>🏃‍♂️ EduRunner Math</h1>
-  <p><strong>Plataforma Gamificada de Aprendizaje Matemático a Escala Estatal</strong></p>
-  
-  [![Estado: En Desarrollo](https://img.shields.io/badge/Estado-En_Desarrollo-orange.svg)]()
-  [![Plataforma: Web & Android](https://img.shields.io/badge/Plataforma-Web%20%7C%20Android-success.svg)]()
-  [![Stack: Phaser & React](https://img.shields.io/badge/Stack-Phaser.js%20%7C%20React-blue.svg)]()
+  <h1>🏎️ Carrera Matemática</h1>
+  <p><strong>Juego educativo de matemáticas para primaria · EduRunner Math</strong></p>
 </div>
 
----
+Crea tu personaje, elige tu vehículo y conduce por la carretera eligiendo el carril con la
+respuesta correcta. Cuando aciertas, tu personaje sonríe y te felicita por tu nombre.
 
-## 📖 Visión del Proyecto
-**EduRunner** (nombre provisional) es una plataforma educativa de alto impacto diseñada para ser distribuida a nivel gubernamental y escolar. Utiliza la mecánica de juego *"Endless Runner"* (carrera infinita) para incentivar la práctica de operaciones matemáticas básicas, y la complementa con un poderoso **Dashboard Analítico** para la supervisión pedagógica.
+- 🎨 **Personaje a tu gusto:** nombre, piel, peinado, color de pelo, ropa y accesorios.
+- 🚗 **6 vehículos:** deportivo, kart, moto, bus escolar, cohete y monster truck.
+- ➕ **3 retos:** sumas (fácil), sumas y restas (medio), multiplicaciones (difícil).
+- 📱 **Responsive y elegante:** diseño tipo iOS para celular, tablet y PC.
+- 📶 **Funciona sin internet** (PWA) y guarda el progreso en el dispositivo.
 
-## ✨ Características Principales
-* **🌐 Offline-First:** Diseñado para entornos de baja conectividad (zonas rurales). El juego guarda el progreso localmente y lo sincroniza con la nube al detectar internet.
-* **📱 Cero Fricción:** Desarrollado como PWA (Progressive Web App). Accesible desde cualquier navegador de PC o Chromebook gubernamental, y empaquetable como APK para tablets Android.
-* **📊 Dashboard Multinivel:** Panel web para visualizar métricas (aciertos, errores, tiempo de uso) con jerarquías claras (Estado > Escuela > Docente).
+## Cómo correrlo
 
-## 🏗️ Estructura del Repositorio (Monorepo)
-El proyecto está dividido en aplicaciones independientes dentro de este mismo repositorio:
-
-```text
-/
-├── apps/
-│   ├── game/             # 🎮 El juego interactivo (Phaser.js / TypeScript)
-│   └── dashboard/        # 📊 Panel web administrativo (React.js / Vite)
-├── docs/                 # 📚 Documentación técnica (PRD, Análisis)
-└── README.md             # Este archivo
+```bash
+cd apps/game
+npm install
+npm run dev       # http://localhost:5173 (también accesible desde el celular en la misma red)
+npm test          # pruebas de la lógica matemática
+npm run build     # build de producción en apps/game/dist
 ```
 
-## 🛠️ Stack Tecnológico Elegido
-* **Motor del Juego:** Phaser.js
-* **Dashboard Administrativo:** React.js + Vite + TailwindCSS
-* **Base de Datos & API:** Supabase (PostgreSQL) con soporte Offline
-* **Despliegue:** Vercel (Web) / Capacitor (APK Android)
+## Estructura
 
-## 🚀 Hoja de Ruta (Roadmap)
-- [x] Fase 1: Análisis Estratégico y Arquitectura.
-- [x] Fase 1.1: Estructuración del repositorio y documentación.
-- [ ] Fase 2: Andamiaje (Scaffolding) de `apps/game` y `apps/dashboard`.
-- [ ] Fase 3: MVP del Juego (Mecánicas de carril y sumas básicas).
-- [ ] Fase 4: MVP del Dashboard y conexión a Supabase.
+```text
+apps/
+├── game/        # 🎮 El juego (TypeScript + Vite, sin frameworks)
+└── dashboard/   # 📊 Prototipo de panel docente (fuera del alcance actual)
+docs/
+└── prd_y_recomendaciones_t_cnicas.md   # PRD v2: requisitos, reglas y arquitectura
+```
 
----
-<div align="center">
-  <i>Construyendo el futuro de la educación mediante la tecnología y la gamificación.</i>
-</div>
+## Despliegue en Vercel
+
+Crear un proyecto apuntando a este repositorio con **Root Directory = `apps/game`**
+(framework Vite, build `npm run build`, salida `dist`).
+
+Detalles completos del diseño y las reglas del juego en el [PRD](docs/prd_y_recomendaciones_t_cnicas.md).
