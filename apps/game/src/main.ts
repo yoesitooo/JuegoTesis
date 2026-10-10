@@ -168,16 +168,24 @@ class GameScene extends Phaser.Scene {
         this.add.rectangle(w / 2, 130, 300, 15, 0xe2e8f0).setStrokeStyle(2, 0x000);
         this.progressBar = this.add.rectangle((w / 2) - 150, 130, 0, 15, 0x22c55e).setOrigin(0, 0.5);
 
+        // --- INSTRUCCIONES PARA EL NIÑO ---
+        const helpText = this.add.text(w / 2, h * 0.25, '¡Toca la nube con\nla respuesta correcta!', { 
+            fontSize: '28px', color: '#1e293b', fontStyle: 'bold', align: 'center', stroke: '#fff', strokeThickness: 4
+        }).setOrigin(0.5);
+        this.tweens.add({ targets: helpText, alpha: 0, delay: 3000, duration: 1000, onComplete: () => helpText.destroy() });
+
         // --- CONTROLES Y EVENTOS ---
         this.input.keyboard?.on('keydown-LEFT', () => this.movePlayer(-1));
         this.input.keyboard?.on('keydown-RIGHT', () => this.movePlayer(1));
         this.input.keyboard?.on('keydown-A', () => this.movePlayer(-1));
         this.input.keyboard?.on('keydown-D', () => this.movePlayer(1));
 
-        // Control táctil (Click/Touch) dividido en mitades
+        // Control táctil (Click/Touch) dividido en mitades (Izquierda/Derecha)
         this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-            if (pointer.x < w / 2) this.movePlayer(-1);
-            else this.movePlayer(1);
+            if (pointer.y > h * 0.3) { // Solo si tocan abajo de las preguntas
+                if (pointer.x < w / 2) this.movePlayer(-1);
+                else this.movePlayer(1);
+            }
         });
 
         this.obstaclesGroup = this.physics.add.group();
@@ -259,7 +267,7 @@ class GameScene extends Phaser.Scene {
         for (let i = 0; i < 3; i++) {
             const laneX = this.roadX + (this.laneWidth * 0.5) + (i * this.laneWidth);
             
-            const cloud = this.physics.add.sprite(laneX, -100, 'cloud');
+            const cloud = this.physics.add.sprite(laneX, -100, 'cloud').setInteractive({ useHandCursor: true });
             cloud.setDisplaySize(this.laneWidth * 0.8, (this.laneWidth * 0.8) * 0.6);
             
             const text = this.add.text(laneX, -100, answers[i].toString(), { 
@@ -271,6 +279,15 @@ class GameScene extends Phaser.Scene {
             
             (cloud as any).answer = answers[i];
             (cloud as any).textObj = text;
+
+            // Novedad: Si el niño toca directamente la nube, el carro se mueve a ese carril
+            cloud.on('pointerdown', () => {
+                const targetLane = i;
+                const dir = targetLane > this.currentLane ? 1 : (targetLane < this.currentLane ? -1 : 0);
+                if (dir !== 0) {
+                    this.movePlayer(targetLane - this.currentLane);
+                }
+            });
 
             this.obstaclesGroup.add(cloud);
         }
