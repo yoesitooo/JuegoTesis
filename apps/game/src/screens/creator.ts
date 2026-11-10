@@ -20,8 +20,11 @@ const TABS: Tab[] = [
 
 const NAMES = ['Luna', 'Mateo', 'Sofía', 'Leo', 'Valen', 'Sam', 'Emma', 'Tomás', 'Mía', 'Nico'];
 
-export function creatorScreen(): Screen {
-  const profile = store.workingProfile();
+export function creatorScreen(params?: Record<string, unknown>): Screen {
+  // { player: 2, difficulty } = se edita el Jugador 2 desde "¿Cómo se juega?"
+  const slot = params?.player === 2 ? 2 : 1;
+  const backToHowto = () => go('howto', { difficulty: params?.difficulty, players: 2 });
+  const profile = store.workingProfile(slot);
   let activeTab = 0;
   let smileTimer = 0;
 
@@ -102,12 +105,12 @@ export function creatorScreen(): Screen {
 
   const next = () => {
     profile.name = profile.name.trim() || 'Piloto';
-    go('garage');
+    go('garage', params);
   };
 
   const el = h('section', { class: 'page creator' },
-    topBar('Tu personaje', {
-      back: () => { store.draft = null; go('home'); },
+    topBar(slot === 2 ? 'Personaje del Jugador 2' : 'Tu personaje', {
+      back: () => { store.draft = null; if (params?.difficulty) backToHowto(); else go('home'); },
       right: iconButton(icons.dice, 'Personaje aleatorio', randomize),
     }),
     h('div', { class: 'page-body creator-body' },

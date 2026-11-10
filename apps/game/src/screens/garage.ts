@@ -13,8 +13,9 @@ function statRow(label: string, value: number) {
   );
 }
 
-export function garageScreen(): Screen {
-  const profile = store.workingProfile();
+export function garageScreen(params?: Record<string, unknown>): Screen {
+  const slot = params?.player === 2 ? 2 : 1;
+  const profile = store.workingProfile(slot);
   const list = h('div', { class: 'garage-list', attrs: { role: 'radiogroup', 'aria-label': 'Vehículos' } });
 
   const card = (v: Vehicle) => {
@@ -45,12 +46,14 @@ export function garageScreen(): Screen {
   render();
 
   const done = () => {
-    store.saveProfile(profile);
-    go('difficulty');
+    store.saveProfile(profile, slot);
+    // Si se vino desde "¿Cómo se juega?" (modo 2 jugadores), se regresa ahí
+    if (params?.difficulty) go('howto', { difficulty: params.difficulty, players: 2 });
+    else go('difficulty');
   };
 
   const el = h('section', { class: 'page garage' },
-    topBar('Elige tu vehículo', { back: () => go('creator') }),
+    topBar(slot === 2 ? 'Vehículo del Jugador 2' : 'Elige tu vehículo', { back: () => go('creator', params) }),
     h('div', { class: 'page-body garage-body' },
       h('p', { class: 'page-lead', text: `${profile.name || 'Piloto'}, ¿con cuál quieres correr?` }),
       list,

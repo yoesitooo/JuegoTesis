@@ -32,11 +32,16 @@ function keyRow(keys: string[], what: string, anim: 'up' | 'down' | 'go') {
 }
 
 /** Tarjeta con el personaje, una mini pista animada y sus teclas. */
-function controlsCard(racer: Racer, keys: KeySet, title: string) {
+function controlsCard(racer: Racer, keys: KeySet, title: string, onEdit?: () => void) {
   return h('div', { class: `card howto-player racer-p${racer.id}` },
     h('div', { class: 'howto-player-head' },
       h('div', { class: 'chip-avatar', html: avatarSVG(racer.look, 'happy') }),
       h('div', {}, h('strong', { text: title }), h('span', { class: 'muted', text: racer.name })),
+      onEdit ? h('button', {
+        class: 'howto-edit',
+        attrs: { type: 'button', 'aria-label': `Editar personaje de ${title}` },
+        on: { click: () => { sfx.tap(); onEdit(); } },
+      }, h('span', { html: icons.pencil }), h('span', { text: 'Editar' })) : null,
     ),
     h('div', { class: 'demo-road', attrs: { 'aria-hidden': 'true' } },
       h('i', { class: 'demo-line l1' }),
@@ -89,9 +94,11 @@ export function howtoScreen(params?: Record<string, unknown>): Screen {
   if (players === 2) {
     const [p1, p2] = versusRacers();
     controls = h('div', { class: 'howto-controls two' },
-      controlsCard(p1, { up: ['W'], down: ['S'], go: ['D'] }, 'Jugador 1'),
+      controlsCard(p1, { up: ['W'], down: ['S'], go: ['D'] }, 'Jugador 1',
+        () => go('creator', { player: 1, difficulty })),
       h('span', { class: 'versus-vs', text: 'VS' }),
-      controlsCard(p2, { up: ['↑'], down: ['↓'], go: ['→'] }, 'Jugador 2'),
+      controlsCard(p2, { up: ['↑'], down: ['↓'], go: ['→'] }, 'Jugador 2',
+        () => go('creator', { player: 2, difficulty })),
     );
   } else {
     const me: Racer = { id: 1, name: profile?.name ?? '', look: profile?.look ?? DEFAULT_LOOK, vehicleId: profile?.vehicleId ?? 'rayo' };

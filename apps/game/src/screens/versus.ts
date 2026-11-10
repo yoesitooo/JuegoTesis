@@ -3,7 +3,7 @@
 // animaciones que la pantalla de 1 jugador (game.ts), que no se modifica.
 import { avatarSVG, DEFAULT_LOOK, type Expression, type Look } from '../art/avatar';
 import { CLOUD } from '../art/scenery';
-import { VEHICLES, vehicleSVG } from '../art/vehicles';
+import { vehicleSVG } from '../art/vehicles';
 import { h, pick, prefersReducedMotion } from '../core/dom';
 import { icons } from '../core/icons';
 import { DIFFICULTIES, makeQuestion, targetForLevel, travelSeconds, type Difficulty, type Question } from '../core/math';
@@ -19,15 +19,12 @@ export interface Racer {
   vehicleId: string;
 }
 
-/** Aspecto fijo del Jugador 2 (distinto al personaje guardado). */
-const P2_LOOK: Look = { skin: 3, hair: 4, hairColor: 0, shirt: 1, accessory: 2 };
-
-/** Jugador 1 = personaje guardado; Jugador 2 = personaje invitado con otro vehículo. */
+/** Jugador 1 = personaje guardado; Jugador 2 = su propio personaje (editable). */
 export function versusRacers(): [Racer, Racer] {
   const p = store.profile;
   const p1: Racer = { id: 1, name: p?.name || 'Jugador 1', look: p?.look ?? DEFAULT_LOOK, vehicleId: p?.vehicleId ?? 'rayo' };
-  const v2 = VEHICLES.find((v) => v.id === 'kart' && v.id !== p1.vehicleId) ?? VEHICLES.find((v) => v.id !== p1.vehicleId)!;
-  const p2: Racer = { id: 2, name: 'Jugador 2', look: P2_LOOK, vehicleId: v2.id };
+  const q = store.profile2;
+  const p2: Racer = { id: 2, name: q.name || 'Jugador 2', look: q.look, vehicleId: q.vehicleId };
   return [p1, p2];
 }
 

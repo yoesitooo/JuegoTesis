@@ -19,9 +19,20 @@ export interface SessionRecord {
   score: number;
 }
 
+/** 1 = dueño del dispositivo; 2 = segundo jugador del modo 2 jugadores. */
+export type Slot = 1 | 2;
+
+/** Personaje por defecto del Jugador 2 (hasta que lo personalice). */
+export const DEFAULT_PLAYER2: Profile = {
+  name: 'Jugador 2',
+  look: { skin: 3, hair: 4, hairColor: 0, shirt: 1, accessory: 2 },
+  vehicleId: 'kart',
+};
+
 interface SaveData {
   version: 2;
   profile: Profile | null;
+  profile2: Profile | null; // personaje del Jugador 2
   muted: boolean;
   best: Partial<Record<Difficulty, { level: number; score: number }>>;
   totals: { correct: number; answered: number };
@@ -33,6 +44,7 @@ const KEY = 'edurunner:v2';
 const empty = (): SaveData => ({
   version: 2,
   profile: null,
+  profile2: null,
   muted: false,
   best: {},
   totals: { correct: 0, answered: 0 },
@@ -64,20 +76,31 @@ export const store = {
   get profile(): Profile | null {
     return data.profile;
   },
+  /** Personaje del Jugador 2 (o el de por defecto si aún no lo creó). */
+  get profile2(): Profile {
+    return data.profile2 ?? DEFAULT_PLAYER2;
+  },
   /** Perfil en edición (aún no guardado) o el guardado. */
   draft: null as Profile | null,
+  draftSlot: 1 as Slot,
 
-  workingProfile(): Profile {
-    if (!this.draft) {
-      this.draft = data.profile
-        ? structuredClone(data.profile)
-        : { name: '', look: { ...DEFAULT_LOOK }, vehicleId: 'rayo' };
+  workingProfile(slot: Slot = 1): Profile {
+    if (!this.draft || this.draftSlot !== slot) {
+      this.draftSlot = slot;
+      if (slot === 2) {
+        this.draft = structuredClone(this.profile2);
+      } else {
+        this.draft = data.profile
+          ? structuredClone(data.profile)
+          : { name: '', look: { ...DEFAULT_LOOK }, vehicleId: 'rayo' };
+      }
     }
     return this.draft;
   },
 
-  saveProfile(p: Profile) {
-    data.profile = structuredClone(p);
+  saveProfile(p: Profile, slot: Slot = 1) {
+    if (slot === 2) data.profile2 = structuredClone(p);
+    else data.profile = structuredClone(p);
     this.draft = null;
     save();
   },

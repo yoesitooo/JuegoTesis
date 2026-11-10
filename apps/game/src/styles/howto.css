@@ -155,7 +155,7 @@
   height: 100%;
   translate: 0 6%;
 }
-.howto-player-head > div:last-child {
+.howto-player-head > div:nth-child(2) {
   display: grid;
 }
 .howto-player-head strong {
@@ -321,4 +321,34 @@
   .howto-emoji {
     animation: none;
   }
+}
+
+/* Botón "Editar" del personaje en las tarjetas de 2 jugadores */
+.howto-player-head > div:nth-child(2) {
+  flex: 1;
+  min-width: 0;
+}
+.howto-edit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, transparent);
+  transition: background-color 0.2s, transform 0.2s var(--ease-spring);
+}
+.howto-edit:hover {
+  background: color-mix(in srgb, var(--tone) 18%, transparent);
+}
+.howto-edit:active {
+  transform: scale(0.95);
+}
+.howto-edit svg {
+  width: 18px;
+  height: 18px;
 }
