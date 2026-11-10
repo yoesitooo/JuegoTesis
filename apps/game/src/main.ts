@@ -1,20 +1,8 @@
 import Phaser from 'phaser';
-
-// --- CONFIGURACIÓN GLOBAL ---
-const COLORS = {
-    bg: '#86efac',     // Pasto verde claro
-    road: 0x94a3b8,    // Carretera
-    line: 0xffffff,    // Líneas blancas
-    text: '#1e293b',   // Texto oscuro
-    panel: 0xffffff    // Paneles UI
-};
-
-const GameState = {
-    difficulty: 'Fácil',
-    score: 0,
-    level: 1,
-    targetScore: 5 // Puntos para pasar al siguiente nivel
-};
+import { COLORS, GameState } from './state';
+import { generateQuestion, buildAnswerOptions, getTier } from './mathEngine';
+import { VersusScene } from './versus';
+import { InstructionsScene } from './instructions';
 
 // --- PRECARGA DE GRÁFICOS (ASSETS REALES SVG) ---
 class Preloader extends Phaser.Scene {
@@ -22,6 +10,7 @@ class Preloader extends Phaser.Scene {
     preload() {
         // En lugar de Emojis, usamos SVGs de alta calidad
         this.load.svg('car', '/assets/car.svg', { width: 80, height: 120 });
+        this.load.svg('car-blue', '/assets/car-blue.svg', { width: 80, height: 120 }); // Jugador 2
         this.load.svg('cloud', '/assets/cloud.svg', { width: 140, height: 90 });
         this.load.svg('tree', '/assets/tree.svg', { width: 80, height: 100 });
         
@@ -69,7 +58,46 @@ class MenuScene extends Phaser.Scene {
         btn.on('pointerover', () => { btn.fillColor = 0xdc2626; this.tweens.add({ targets: [btn, btnText], scale: 1.1, duration: 100 }); });
         btn.on('pointerout', () => { btn.fillColor = 0xef4444; this.tweens.add({ targets: [btn, btnText], scale: 1, duration: 100 }); });
         
-        btn.on('pointerdown', () => this.scene.start('DifficultyScene'));
+        btn.on('pointerdown', () => this.scene.start('ModeScene'));
+    }
+}
+
+// --- PANTALLA DE MODO DE JUEGO (1 o 2 JUGADORES) ---
+class ModeScene extends Phaser.Scene {
+    constructor() { super('ModeScene'); }
+    create() {
+        const w = this.cameras.main.width;
+        const h = this.cameras.main.height;
+        this.cameras.main.setBackgroundColor(COLORS.bg);
+
+        this.add.text(w / 2, h * 0.15, '¿Cuántos juegan?', { fontSize: '48px', color: '#fff', stroke: '#000', strokeThickness: 6, fontStyle: 'bold' }).setOrigin(0.5);
+
+        const modes = [
+            { players: 1 as const, label: '1 Jugador', color: 0x22c55e, desc: 'Juega a tu ritmo', car: ['car'] },
+            { players: 2 as const, label: '2 Jugadores', color: 0x3b82f6, desc: 'J1: A / D   ·   J2: ← / →', car: ['car', 'car-blue'] }
+        ];
+
+        modes.forEach((mode, index) => {
+            const y = (h * 0.4) + (index * (h * 0.25));
+            const bw = Math.min(w * 0.8, 400), bh = Math.min(h * 0.18, 120);
+            const btn = this.add.rectangle(w / 2, y, bw, bh, mode.color).setInteractive({ useHandCursor: true });
+            btn.setStrokeStyle(4, 0xffffff);
+
+            const title = this.add.text(w / 2, y - 15, mode.label, { fontSize: '36px', color: '#fff', fontStyle: 'bold' }).setOrigin(0.5);
+            const desc = this.add.text(w / 2, y + 22, mode.desc, { fontSize: '20px', color: '#fff' }).setOrigin(0.5);
+
+            // Carritos decorativos a los lados del botón
+            const cars = mode.car.map((key, i) => this.add.image((w / 2) - (bw / 2) + 35 + (i * 30), y, key).setScale(0.45).setAngle(-10));
+            cars.forEach((car, i) => this.tweens.add({ targets: car, y: y - 6, yoyo: true, repeat: -1, duration: 600 + i * 150 }));
+
+            btn.on('pointerover', () => this.tweens.add({ targets: [btn, title, desc], scale: 1.05, duration: 100 }));
+            btn.on('pointerout', () => this.tweens.add({ targets: [btn, title, desc], scale: 1, duration: 100 }));
+            btn.on('pointerdown', () => {
+                GameState.players = mode.players;
+                GameState.versusWins = [0, 0];
+                this.scene.start('DifficultyScene');
+            });
+        });
     }
 }
 
@@ -84,9 +112,9 @@ class DifficultyScene extends Phaser.Scene {
         this.add.text(w / 2, h * 0.15, 'Selecciona un Nivel', { fontSize: '48px', color: '#fff', stroke: '#000', strokeThickness: 6, fontStyle: 'bold' }).setOrigin(0.5);
 
         const diffs = [
-            { id: 'Fácil', color: 0x22c55e, desc: 'Sumas de 1 cifra' },
-            { id: 'Medio', color: 0xeab308, desc: 'Sumas y Restas' },
-            { id: 'Difícil', color: 0xef4444, desc: 'Multiplicaciones' }
+            { id: 'Fácil', color: 0x22c55e, desc: '+ − × ÷ con números pequeños' },
+            { id: 'Medio', color: 0xeab308, desc: 'Números más grandes' },
+            { id: 'Difícil', color: 0xef4444, desc: 'Operaciones combinadas' }
         ];
 
         diffs.forEach((diff, index) => {
@@ -101,7 +129,8 @@ class DifficultyScene extends Phaser.Scene {
                 GameState.difficulty = diff.id;
                 GameState.score = 0;
                 GameState.level = 1;
-                this.scene.start('GameScene');
+                GameState.targetScore = 5;
+                this.scene.start('InstructionsScene'); // Indicaciones antes de jugar
             });
         });
     }
@@ -120,6 +149,7 @@ class GameScene extends Phaser.Scene {
     laneWidth!: number;
     roadX!: number;
     speed: number = 300;
+    lastQuestion: string = '';
 
     constructor() { super('GameScene'); }
 
@@ -232,35 +262,14 @@ class GameScene extends Phaser.Scene {
     }
 
     generateQuestion() {
-        let num1, num2;
-        if (GameState.difficulty === 'Fácil') {
-            num1 = Phaser.Math.Between(1, 10);
-            num2 = Phaser.Math.Between(1, 10);
-            this.correctAnswer = num1 + num2;
-            this.questionText.setText(`${num1} + ${num2}`);
-        } else if (GameState.difficulty === 'Medio') {
-            const isSum = Phaser.Math.Between(0, 1) === 0;
-            if(isSum){
-                num1 = Phaser.Math.Between(10, 50); num2 = Phaser.Math.Between(1, 20);
-                this.correctAnswer = num1 + num2; this.questionText.setText(`${num1} + ${num2}`);
-            } else {
-                num1 = Phaser.Math.Between(10, 30); num2 = Phaser.Math.Between(1, num1);
-                this.correctAnswer = num1 - num2; this.questionText.setText(`${num1} - ${num2}`);
-            }
-        } else {
-            num1 = Phaser.Math.Between(2, 10);
-            num2 = Phaser.Math.Between(2, 10);
-            this.correctAnswer = num1 * num2;
-            this.questionText.setText(`${num1} × ${num2}`);
-        }
+        // Suma, resta, multiplicación y división según dificultad + nivel (ver mathEngine.ts)
+        const tier = getTier(GameState.difficulty, GameState.level);
+        const question = generateQuestion(tier, this.lastQuestion);
+        this.lastQuestion = question.text;
+        this.correctAnswer = question.answer;
+        this.questionText.setText(question.text);
 
-        let fake1 = this.correctAnswer + Phaser.Math.Between(1, 5);
-        let fake2 = this.correctAnswer - Phaser.Math.Between(1, 4);
-        if (fake2 < 0) fake2 = this.correctAnswer + 3;
-        if (fake1 === fake2) fake1++;
-        
-        const answers = [this.correctAnswer, fake1, fake2];
-        Phaser.Utils.Array.Shuffle(answers);
+        const answers = buildAnswerOptions(this.correctAnswer, 3);
 
         this.tweens.add({ targets: this.questionText, scale: 1.3, yoyo: true, duration: 300 });
 
@@ -271,7 +280,7 @@ class GameScene extends Phaser.Scene {
             cloud.setDisplaySize(this.laneWidth * 0.8, (this.laneWidth * 0.8) * 0.6);
             
             const text = this.add.text(laneX, -100, answers[i].toString(), { 
-                fontSize: '40px', color: '#0f172a', fontStyle: 'bold' 
+                fontSize: `${Math.min(40, Math.floor(this.laneWidth * 0.28))}px`, color: '#0f172a', fontStyle: 'bold' 
             }).setOrigin(0.5);
             
             cloud.setVelocityY(this.speed);
@@ -397,7 +406,7 @@ const config: Phaser.Types.Core.GameConfig = {
         height: '100%'
     },
     physics: { default: 'arcade', arcade: { debug: false } },
-    scene: [Preloader, MenuScene, DifficultyScene, GameScene]
+    scene: [Preloader, MenuScene, ModeScene, DifficultyScene, InstructionsScene, GameScene, VersusScene]
 };
 
 new Phaser.Game(config);
