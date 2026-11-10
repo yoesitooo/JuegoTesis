@@ -7,6 +7,9 @@ import { sfx } from '../core/sound';
 import { store } from '../core/store';
 import { topBar } from '../core/ui';
 
+/** Modo elegido (1 o 2 jugadores); se recuerda mientras la app está abierta. */
+let players: 1 | 2 = 1;
+
 export function difficultyScreen(): Screen {
   const profile = store.profile;
   if (!profile) {
@@ -29,7 +32,7 @@ export function difficultyScreen(): Screen {
     return h('button', {
       class: `card level-card tone-${d.color}`,
       attrs: { type: 'button' },
-      on: { click: () => { sfx.tap(); go('game', { difficulty: id }); } },
+      on: { click: () => { sfx.tap(); go('howto', { difficulty: id, players }); } },
     },
       h('span', { class: 'level-sample', text: d.sample }),
       h('span', { class: 'level-text' },
@@ -45,9 +48,38 @@ export function difficultyScreen(): Screen {
     topBar('Elige el reto', { back: () => go('home'), right: editChip }),
     h('div', { class: 'page-body difficulty-body' },
       h('p', { class: 'page-lead', text: profile ? `¿Qué quieres practicar hoy, ${profile.name}?` : '' }),
+      modePicker(),
       h('div', { class: 'level-list' }, ...cards),
     ),
   );
 
   return { el };
+}
+
+/** Selector "1 Jugador / 2 Jugadores" con el control segmentado del diseño. */
+function modePicker(): HTMLElement {
+  const options = [
+    { value: 1 as const, label: '👤 1 Jugador' },
+    { value: 2 as const, label: '👥 2 Jugadores' },
+  ];
+  const wrap = h('div', { class: 'segmented mode-picker', attrs: { role: 'radiogroup', 'aria-label': 'Jugadores' } });
+  const hint = h('p', { class: 'mode-hint muted' });
+  const render = () => {
+    wrap.querySelectorAll('.segment').forEach((b, i) => {
+      const on = options[i].value === players;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-checked', String(on));
+    });
+    hint.textContent = players === 2
+      ? 'Dos jugadores en el mismo teclado: J1 usa W / S / D y J2 las flechas ↑ ↓ →'
+      : 'Juega tú solo a tu ritmo';
+  };
+  options.forEach((o) => wrap.append(h('button', {
+    class: 'segment',
+    text: o.label,
+    attrs: { type: 'button', role: 'radio' },
+    on: { click: () => { sfx.tap(); players = o.value; render(); } },
+  })));
+  render();
+  return h('div', { class: 'mode-box' }, wrap, hint);
 }

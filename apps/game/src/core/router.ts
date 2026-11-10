@@ -1,5 +1,5 @@
 // Navegación entre pantallas con transición suave.
-export type Route = 'home' | 'creator' | 'garage' | 'difficulty' | 'game';
+export type Route = 'home' | 'creator' | 'garage' | 'difficulty' | 'howto' | 'game' | 'versus';
 
 export interface Screen {
   el: HTMLElement;

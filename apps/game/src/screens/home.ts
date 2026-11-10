@@ -53,7 +53,7 @@ export function homeScreen(): Screen {
     h('div', { class: 'home-top' }, h('span', { class: 'pill-badge', text: 'EduRunner Math' }), soundToggle()),
     h('div', { class: 'home-hero' },
       h('h1', { class: 'home-title' }, 'Carrera', h('br'), h('span', { text: 'Matemática' })),
-      h('p', { class: 'home-sub', text: 'Suma, resta y multiplica a toda velocidad' }),
+      h('p', { class: 'home-sub', text: 'Suma, resta, multiplica y divide a toda velocidad' }),
     ),
     h('div', { class: 'home-stage card' }, miniStage(vehicleId, look, 'happy')),
     h('div', { class: 'card home-card' }, actions),

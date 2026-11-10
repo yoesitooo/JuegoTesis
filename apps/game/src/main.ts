@@ -2,6 +2,8 @@ import '@fontsource-variable/nunito';
 import './styles/base.css';
 import './styles/screens.css';
 import './styles/game.css';
+import './styles/howto.css';
+import './styles/versus.css';
 
 import { FLOWERS, HILLS, TREES } from './art/scenery';
 import { setupRouter, go } from './core/router';
@@ -11,6 +13,8 @@ import { difficultyScreen } from './screens/difficulty';
 import { gameScreen } from './screens/game';
 import { garageScreen } from './screens/garage';
 import { homeScreen } from './screens/home';
+import { howtoScreen } from './screens/howto';
+import { versusScreen } from './screens/versus';
 
 const app = document.getElementById('app')!;
 
@@ -24,7 +28,9 @@ setupRouter(app, {
   creator: creatorScreen,
   garage: garageScreen,
   difficulty: difficultyScreen,
+  howto: howtoScreen,
   game: gameScreen,
+  versus: versusScreen,
 });
 
 go('home');
